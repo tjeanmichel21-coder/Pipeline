@@ -4,9 +4,19 @@
 // always runs.
 import { createClient } from "@supabase/supabase-js";
 
-const url = import.meta.env.VITE_SUPABASE_URL;
-const key = import.meta.env.VITE_SUPABASE_ANON_KEY;
-export const supabase = url && key ? createClient(url, key) : null;
+// Trim whitespace and strip accidental quotes from env values, and never
+// let a malformed value crash the whole app — degrade to local mode instead.
+const clean = (v) => (v || "").trim().replace(/^["']+|["']+$/g, "");
+const url = clean(import.meta.env.VITE_SUPABASE_URL);
+const key = clean(import.meta.env.VITE_SUPABASE_ANON_KEY);
+let _sb = null;
+try {
+  _sb = url && key ? createClient(url, key) : null;
+} catch (e) {
+  console.error("Pipeline: Supabase init failed — check VITE_SUPABASE_URL / VITE_SUPABASE_ANON_KEY:", e?.message);
+  _sb = null;
+}
+export const supabase = _sb;
 export const usingSharedDb = !!supabase;
 
 const LS_KEY = "pipeline9-crm-v1";
