@@ -174,17 +174,14 @@ export default function App() {
       const res = await response.json();
       const text = (res.content || []).filter((b) => b.type === "text").map((b) => b.text).join(" ");
       if (text.includes("SENT")) {
-        setNotice(`Labor-ready notice emailed to ${LABOR_NOTIFY_EMAIL} ✓`);
-        setTimeout(() => setNotice(""), 6000);
+        setNotice(`✓ Labor-ready notice emailed to ${LABOR_NOTIFY_EMAIL} — ${fmtDate(today())}`);
       } else {
         setNotice("");
         setError(text.trim().slice(0, 220) || "Couldn't email the labor-ready notice — check the Microsoft 365 connection.");
-        setTimeout(() => setError(""), 9000);
       }
     } catch {
       setNotice("");
       setError("Couldn't reach the email service for the labor-ready notice.");
-      setTimeout(() => setError(""), 9000);
     }
   };
 
@@ -334,14 +331,18 @@ export default function App() {
       </div>
 
       {error && (
-        <div style={{ margin: "0 24px 12px", padding: "8px 14px", background: "#fdebe8", color: "#b03a2e", fontSize: 13 }}>
-          {error}
+        <div style={{ margin: "0 24px 12px", padding: "10px 14px", background: "#fdebe8", color: "#b03a2e", fontSize: 13, display: "flex", alignItems: "center", gap: 10, borderRadius: "var(--radius)", border: "1px solid #f4cdca" }}>
+          <span style={{ flex: 1 }}>{error}</span>
+          <button onClick={() => setError("")} aria-label="Dismiss"
+            style={{ background: "none", border: "none", color: "inherit", cursor: "pointer", fontSize: 18, lineHeight: 1, padding: "0 2px" }}>×</button>
         </div>
       )}
 
       {notice && (
-        <div style={{ margin: "0 24px 12px", padding: "8px 14px", background: "#e8f1fb", color: "#1f5fa6", fontSize: 13 }}>
-          {notice}
+        <div style={{ margin: "0 24px 12px", padding: "10px 14px", background: "#e8f1fb", color: "#1f5fa6", fontSize: 13, display: "flex", alignItems: "center", gap: 10, borderRadius: "var(--radius)", border: "1px solid #c9def5" }}>
+          <span style={{ flex: 1 }}>{notice}</span>
+          <button onClick={() => setNotice("")} aria-label="Dismiss"
+            style={{ background: "none", border: "none", color: "inherit", cursor: "pointer", fontSize: 18, lineHeight: 1, padding: "0 2px" }}>×</button>
         </div>
       )}
 
