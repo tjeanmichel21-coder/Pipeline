@@ -219,9 +219,7 @@ export default function App() {
       {/* ===== Header ===== */}
       <header>
         <div style={{ display: "flex", alignItems: "center", gap: 12, padding: "9px 20px", background: "#ffffff", borderBottom: "1px solid var(--line)" }}>
-          <span style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", width: 32, height: 32, borderRadius: 6, background: "var(--copper)", color: "#ffffff", fontFamily: "var(--display)", fontWeight: 700, fontSize: 16 }}>
-            P
-          </span>
+          <PipeMark size={32} />
           <span style={{ fontFamily: "var(--display)", fontSize: 18, color: "var(--navy)", fontWeight: 700, letterSpacing: -0.2 }}>
             Pipeline
           </span>
@@ -346,10 +344,10 @@ function Shell({ children }) {
         :root {
           --bg: #f3f4f6;
           --panel: #ffffff;
-          --panel2: #f4f6f9;
-          --line: #dfe3ea;
+          --panel2: #f6f9fc;
+          --line: #e3e8f0;
           --ink: #181818;
-          --ink-dim: #706e6b;
+          --ink-dim: #647488;
           --navy: #032d60;
           --navy2: #014486;
           --copper: #0176d3;
@@ -360,8 +358,8 @@ function Shell({ children }) {
           --display: 'Inter', sans-serif;
           --body: 'Inter', sans-serif;
           --mono: 'Spline Sans Mono', monospace;
-          --shadow-sm: 0 1px 2px rgba(0,0,0,.05);
-          --shadow-md: 0 2px 8px rgba(0,0,0,.10);
+          --shadow-sm: 0 1px 2px rgba(12,37,67,.05), 0 1px 3px rgba(12,37,67,.04);
+          --shadow-md: 0 4px 14px rgba(12,37,67,.10), 0 2px 5px rgba(12,37,67,.06);
         }
         * { box-sizing: border-box; }
         .p9-root { background: var(--bg); }
@@ -383,7 +381,7 @@ function Shell({ children }) {
         @keyframes p9rise { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
         .p9-rise { animation: p9rise .45s cubic-bezier(.22,.8,.32,1) both; }
         .p9-card { transition: transform .18s ease, box-shadow .18s ease, border-color .18s ease; }
-        .p9-card:hover { box-shadow: var(--shadow-md); border-color: var(--copper-dim) !important; }
+        .p9-card { border-radius: 10px; } .p9-card:hover { box-shadow: var(--shadow-md); border-color: var(--copper-dim) !important; }
         .p9-btn { transition: filter .15s ease, transform .08s ease, box-shadow .15s ease; }
         .p9-btn:hover:not(:disabled) { filter: brightness(0.94); }
         .p9-btn:active:not(:disabled) { transform: translateY(1px); }
@@ -394,6 +392,10 @@ function Shell({ children }) {
           transform: scaleX(0); transition: transform .2s cubic-bezier(.22,.8,.32,1);
         }
         .p9-tab.on::after { transform: scaleX(1); }
+        table.p9-tbl tbody tr:nth-child(even) { background: #fbfcfe; }
+        table.p9-tbl tbody tr:hover { background: #f0f6fd; }
+        table.p9-tbl thead th { background: var(--panel2); position: sticky; top: 0; }
+        .p9-scroll::-webkit-scrollbar { height: 8px; }
         @media (prefers-reduced-motion: reduce) { .p9-rise, .p9-card, .p9-btn, .p9-tab::after { animation: none; transition: none; } }
       `}</style>
       {children}
@@ -402,7 +404,7 @@ function Shell({ children }) {
 }
 
 const Stat = ({ label, value, accent }) => (
-  <div className="p9-card p9-rise" style={{ padding: "14px 18px 13px", background: "var(--panel)", border: "1px solid var(--line)", borderRadius: 4, boxShadow: "var(--shadow-sm)", borderTop: "3px solid " + (accent ? "var(--copper)" : "var(--line)") }}>
+  <div className="p9-card p9-rise" style={{ padding: "14px 18px 13px", background: "var(--panel)", border: "1px solid var(--line)", borderRadius: 4, boxShadow: "var(--shadow-sm)", borderTop: "3px solid " + (accent ? "var(--copper)" : "#c9d6e6") }}>
     <div style={{ fontFamily: "var(--mono)", letterSpacing: 1.5, fontSize: 10, color: "var(--ink-dim)", textTransform: "uppercase" }}>
       {label}
     </div>
@@ -519,9 +521,9 @@ function AlertsBar({ staleItbs, settings, onSettings, onOpenItb }) {
 function Pipeline({ data, active, onSelect, onMove, onNew }) {
   return (
     <div style={{ padding: "0 24px 24px" }}>
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
-        <h2 style={{ fontFamily: "var(--display)", fontSize: 18, fontWeight: 700, letterSpacing: 0.2, margin: 0, color: "var(--ink)" }}>
-          Bid pipeline
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 14, marginTop: 4 }}>
+        <h2 style={{ fontFamily: "var(--display)", fontSize: 19, fontWeight: 700, letterSpacing: -0.2, margin: 0, color: "var(--ink)", display: "flex", alignItems: "center", gap: 10 }}>
+          <span style={{ width: 4, height: 20, background: "var(--copper)", borderRadius: 2, display: "inline-block" }} />Bid pipeline
         </h2>
         <button onClick={onNew}
           className="p9-btn" style={{ background: "var(--copper)", color: "#ffffff", border: "none", padding: "11px 24px", fontFamily: "var(--display)", fontSize: 14.5, letterSpacing: 0.8, cursor: "pointer", fontWeight: 700, borderRadius: 499 }}>
@@ -748,7 +750,7 @@ function JobDetail({ job, onBack, onUpdate, settings, onSettings }) {
       <button onClick={onBack} style={{ background: "none", border: "none", color: "var(--copper)", cursor: "pointer", fontSize: 13, padding: 0, marginBottom: 8 }}>
         ← All jobs
       </button>
-      <div style={{ background: "var(--panel)", border: "1px solid var(--line)", padding: 20, borderRadius: 4, boxShadow: "0 1px 2px rgba(20,40,60,0.06)" }}>
+      <div style={{ background: "var(--panel)", border: "1px solid var(--line)", borderTop: "3px solid var(--copper)", padding: 22, borderRadius: 10, boxShadow: "var(--shadow-sm)" }}>
         <div style={{ display: "flex", justifyContent: "space-between", flexWrap: "wrap", gap: 12 }}>
           <div>
             <h2 style={{ fontFamily: "var(--display)", fontSize: 22, fontWeight: 700, margin: 0, letterSpacing: 0.5 }}>{job.name}</h2>
@@ -1240,6 +1242,28 @@ function JobNotes({ job, onUpdate }) {
 
 
 
+/* ============== LOGO ============== */
+function PipeMark({ size = 36, light = false }) {
+  const c1 = light ? "#ffffff" : "var(--copper)";
+  const c2 = light ? "rgba(255,255,255,0.55)" : "var(--copper-hi)";
+  return (
+    <svg width={size} height={size} viewBox="0 0 48 48" fill="none" aria-hidden="true">
+      <rect x="2" y="2" width="44" height="44" rx="11" fill={light ? "rgba(255,255,255,0.12)" : "var(--navy)"} />
+      {/* three pipe segments rising like a pipeline / bar chart, with bore holes */}
+      <g>
+        <rect x="11" y="27" width="7.5" height="11" rx="3.75" fill={c2} />
+        <circle cx="14.75" cy="27" r="2.1" fill={light ? "var(--navy)" : "#ffffff"} opacity={light ? "0.25" : "0.9"} />
+        <rect x="20.25" y="20" width="7.5" height="18" rx="3.75" fill={c1} />
+        <circle cx="24" cy="20" r="2.1" fill={light ? "var(--navy)" : "#ffffff"} opacity={light ? "0.25" : "0.9"} />
+        <rect x="29.5" y="11" width="7.5" height="27" rx="3.75" fill={c2} />
+        <circle cx="33.25" cy="11" r="2.1" fill={light ? "var(--navy)" : "#ffffff"} opacity={light ? "0.25" : "0.9"} />
+      </g>
+      {/* connecting flow line through the segment centers */}
+      <path d="M14.75 27 L24 20 L33.25 11" stroke={light ? "#ffffff" : "var(--copper-hi)"} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" opacity="0.65" />
+    </svg>
+  );
+}
+
 /* ============== LOGIN ============== */
 function Login() {
   const [mode, setMode] = useState("signin");
@@ -1265,24 +1289,78 @@ function Login() {
   };
 
   return (
-    <div style={{ minHeight: "80vh", display: "flex", alignItems: "center", justifyContent: "center", padding: 20 }}>
-      <div className="p9-rise" style={{ width: 380, background: "var(--panel)", border: "1px solid var(--line)", borderRadius: 4, padding: 28, boxShadow: "var(--shadow-md)" }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 4 }}>
-          <span style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", width: 34, height: 34, borderRadius: 6, background: "var(--copper)", color: "#fff", fontWeight: 700, fontSize: 17, fontFamily: "var(--display)" }}>P</span>
-          <span style={{ fontFamily: "var(--display)", fontWeight: 700, fontSize: 20, color: "var(--navy)" }}>Pipeline</span>
+    <div style={{ minHeight: "100vh", display: "grid", gridTemplateColumns: "1.05fr 1fr", background: "var(--bg)" }} className="p9-login">
+      <style>{`
+        @media (max-width: 820px) { .p9-login { grid-template-columns: 1fr !important; } .p9-login-brand { display: none !important; } }
+      `}</style>
+
+      {/* brand panel */}
+      <div className="p9-login-brand" style={{
+        position: "relative", overflow: "hidden", color: "#fff",
+        background: "linear-gradient(150deg, var(--navy) 0%, var(--navy2) 60%, #0a63b8 100%)",
+        padding: "56px 56px", display: "flex", flexDirection: "column", justifyContent: "space-between",
+      }}>
+        {/* faint blueprint grid + glow */}
+        <div style={{ position: "absolute", inset: 0, opacity: 0.5, background:
+          "radial-gradient(600px 300px at 80% 10%, rgba(27,150,255,0.35), transparent 60%)," +
+          "repeating-linear-gradient(0deg, rgba(255,255,255,0.05) 0 1px, transparent 1px 32px)," +
+          "repeating-linear-gradient(90deg, rgba(255,255,255,0.05) 0 1px, transparent 1px 32px)" }} />
+        <div style={{ position: "relative", display: "flex", alignItems: "center", gap: 12 }}>
+          <PipeMark size={44} light />
+          <span style={{ fontFamily: "var(--display)", fontWeight: 700, fontSize: 26, letterSpacing: -0.3 }}>Pipeline</span>
         </div>
-        <div style={{ fontSize: 13, color: "var(--ink-dim)", marginBottom: 18 }}>
-          {mode === "signin" ? "Sign in to your team's workspace." : "Create your account — your email must have a seat."}
+        <div style={{ position: "relative" }}>
+          <div style={{ fontFamily: "var(--display)", fontWeight: 700, fontSize: 34, lineHeight: 1.12, letterSpacing: -0.5, maxWidth: 420 }}>
+            From intent to bid<br />to invoice paid.
+          </div>
+          <div style={{ fontSize: 15, color: "rgba(255,255,255,0.78)", marginTop: 16, maxWidth: 400, lineHeight: 1.5 }}>
+            Track every ITB, estimate, and job in one place — built for plumbing &amp; MEP contractors.
+          </div>
+          <div style={{ display: "flex", gap: 26, marginTop: 30 }}>
+            {[["Pipeline", "ITB → won"], ["Estimates", "ARR tracked"], ["Jobs", "materials · labor"]].map(([a, b]) => (
+              <div key={a}>
+                <div style={{ fontFamily: "var(--display)", fontWeight: 700, fontSize: 15 }}>{a}</div>
+                <div style={{ fontSize: 12, color: "rgba(255,255,255,0.6)" }}>{b}</div>
+              </div>
+            ))}
+          </div>
         </div>
-        <Field label="Email"><input type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="you@yourcompany.com" /></Field>
-        <Field label="Password"><input type="password" value={pw} onChange={(e) => setPw(e.target.value)} onKeyDown={(e) => e.key === "Enter" && go()} /></Field>
-        {msg && <div style={{ marginTop: 12, fontSize: 13, color: msg.ok ? "var(--green)" : "var(--red)" }}>{msg.text}</div>}
-        <div style={{ marginTop: 18, display: "flex", gap: 10, alignItems: "center" }}>
-          <Btn disabled={busy} onClick={go}>{busy ? "Working…" : mode === "signin" ? "Sign in" : "Create account"}</Btn>
-          <button onClick={() => { setMode(mode === "signin" ? "signup" : "signin"); setMsg(null); }}
-            style={{ background: "none", border: "none", color: "var(--copper)", fontSize: 13, cursor: "pointer", fontWeight: 600 }}>
-            {mode === "signin" ? "New here? Create account" : "Have an account? Sign in"}
+        <div style={{ position: "relative", fontFamily: "var(--mono)", fontSize: 11, letterSpacing: 1.5, color: "rgba(255,255,255,0.45)", textTransform: "uppercase" }}>
+          ITB · Estimate · Build
+        </div>
+      </div>
+
+      {/* form panel */}
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "center", padding: 28 }}>
+        <div className="p9-rise" style={{ width: "100%", maxWidth: 380 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 6 }} className="p9-login-mark-sm">
+            <PipeMark size={32} />
+            <span style={{ fontFamily: "var(--display)", fontWeight: 700, fontSize: 20, color: "var(--navy)" }}>Pipeline</span>
+          </div>
+          <h1 style={{ fontFamily: "var(--display)", fontWeight: 700, fontSize: 24, margin: "10px 0 4px", color: "var(--ink)" }}>
+            {mode === "signin" ? "Welcome back" : "Create your account"}
+          </h1>
+          <div style={{ fontSize: 13.5, color: "var(--ink-dim)", marginBottom: 22 }}>
+            {mode === "signin" ? "Sign in to your team's workspace." : "Use the email your owner gave a seat to."}
+          </div>
+          <Field label="Email"><input type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="you@yourcompany.com" /></Field>
+          <Field label="Password"><input type="password" value={pw} onChange={(e) => setPw(e.target.value)} placeholder="••••••••" onKeyDown={(e) => e.key === "Enter" && go()} /></Field>
+          {msg && (
+            <div style={{ marginTop: 14, fontSize: 13, padding: "9px 12px", borderRadius: 6, background: msg.ok ? "#eaf6ef" : "#fdeceb", color: msg.ok ? "var(--green)" : "var(--red)", border: "1px solid " + (msg.ok ? "#bfe3cd" : "#f4cdca") }}>
+              {msg.text}
+            </div>
+          )}
+          <button onClick={go} disabled={busy} className="p9-btn"
+            style={{ width: "100%", marginTop: 20, background: "var(--copper)", color: "#fff", border: "none", borderRadius: 6, padding: "12px", fontFamily: "var(--display)", fontWeight: 600, fontSize: 15, cursor: busy ? "default" : "pointer", opacity: busy ? 0.6 : 1 }}>
+            {busy ? "Working…" : mode === "signin" ? "Sign in" : "Create account"}
           </button>
+          <div style={{ textAlign: "center", marginTop: 18, fontSize: 13, color: "var(--ink-dim)" }}>
+            {mode === "signin" ? "New to your team? " : "Already have an account? "}
+            <button onClick={() => { setMode(mode === "signin" ? "signup" : "signin"); setMsg(null); }}
+              style={{ background: "none", border: "none", color: "var(--copper)", fontSize: 13, cursor: "pointer", fontWeight: 600, padding: 0 }}>
+              {mode === "signin" ? "Create an account" : "Sign in"}
+            </button>
+          </div>
         </div>
       </div>
     </div>
@@ -1493,6 +1571,63 @@ const Panel = ({ title, action, children }) => (
   </div>
 );
 
+/* ============== GC ESTIMATE SCOREBOARD ============== */
+function GcScoreboard({ data, onOpenItb }) {
+  // Auto-derived from every ITB's client — no setup needed.
+  const norm = (s) => (s || "").trim().toLowerCase();
+  const byGc = {};
+  for (const i of data.itbs) {
+    const k = norm(i.client) || "(no gc listed)";
+    if (!byGc[k]) byGc[k] = { name: (i.client || "(no GC listed)").trim(), bids: 0, sent: 0, pending: 0, won: 0, lost: 0, valueSent: 0, valueWon: 0, pendingItbs: [] };
+    const g = byGc[k];
+    g.bids += 1;
+    const wasSent = (i.history || []).some((h) => h.stage === "estimate_sent") || ["estimate_sent", "won"].includes(i.stage);
+    if (wasSent) { g.sent += 1; g.valueSent += i.value || 0; }
+    if (i.stage === "estimate_sent") { g.pending += 1; g.pendingItbs.push(i); }
+    if (i.stage === "won") { g.won += 1; g.valueWon += i.value || 0; }
+    if (i.stage === "lost") g.lost += 1;
+  }
+  const rows = Object.values(byGc).sort((a, b) => b.valueSent - a.valueSent);
+  if (!rows.length) return null;
+
+  const rate = (g) => (g.won + g.lost ? Math.round((g.won / (g.won + g.lost)) * 100) + "%" : "—");
+  const rateColor = (g) => {
+    if (!(g.won + g.lost)) return "var(--ink-dim)";
+    const r = g.won / (g.won + g.lost);
+    return r >= 0.4 ? "var(--green)" : r >= 0.2 ? "#b07d0e" : "var(--red)";
+  };
+
+  return (
+    <div style={{ marginBottom: 22 }}>
+      <div style={{ fontFamily: "var(--display)", fontWeight: 700, fontSize: 15, marginBottom: 2 }}>Estimates by GC</div>
+      <div style={{ fontSize: 12.5, color: "var(--ink-dim)", marginBottom: 10 }}>
+        Auto-built from your ITBs — see who awards work and who just collects numbers.
+      </div>
+      <Table head={["GC / Client", "Bids", "Est. sent", "Awaiting", "Won", "Lost", "Win rate", "Value sent", "Value won"]}>
+        {rows.map((g) => (
+          <tr key={g.name}>
+            <Td><b>{g.name}</b>
+              {g.pendingItbs.slice(0, 3).map((i) => (
+                <div key={i.id} onClick={() => onOpenItb(i.id)} style={{ color: "var(--copper)", cursor: "pointer", fontSize: 11.5 }}>
+                  ↳ {i.name} ({fmt(i.value)})
+                </div>
+              ))}
+            </Td>
+            <Td mono>{g.bids}</Td>
+            <Td mono>{g.sent}</Td>
+            <Td mono>{g.pending || "—"}</Td>
+            <Td mono><span style={{ color: g.won ? "var(--green)" : "var(--ink)" }}>{g.won}</span></Td>
+            <Td mono>{g.lost || "—"}</Td>
+            <Td mono><span style={{ color: rateColor(g), fontWeight: 600 }}>{rate(g)}</span></Td>
+            <Td mono>{g.valueSent ? fmt(g.valueSent) : "—"}</Td>
+            <Td mono><span style={{ color: g.valueWon ? "var(--green)" : "var(--ink-dim)" }}>{g.valueWon ? fmt(g.valueWon) : "—"}</span></Td>
+          </tr>
+        ))}
+      </Table>
+    </div>
+  );
+}
+
 /* ============== ACCOUNTS ============== */
 function Accounts({ data, onAdd, onDel, onOpenItb }) {
   const [f, setF] = useState({ name: "", industry: "", phone: "", website: "" });
@@ -1504,7 +1639,9 @@ function Accounts({ data, onAdd, onDel, onOpenItb }) {
     };
   };
   return (
-    <ListPage title="Accounts" subtitle="Companies and GCs — ITBs and jobs link automatically by client name.">
+    <ListPage title="Accounts & GCs" subtitle="Companies you bid for — with a live estimate scoreboard per GC.">
+      <GcScoreboard data={data} onOpenItb={onOpenItb} />
+      <div style={{ fontFamily: "var(--display)", fontWeight: 700, fontSize: 15, marginBottom: 10 }}>Account records</div>
       <div style={{ display: "flex", gap: 8, marginBottom: 14, flexWrap: "wrap" }}>
         <input style={{ flex: 2, minWidth: 180 }} placeholder="Company / GC name" value={f.name} onChange={(e) => setF({ ...f, name: e.target.value })} />
         <input style={{ flex: 1, minWidth: 130 }} placeholder="Industry" value={f.industry} onChange={(e) => setF({ ...f, industry: e.target.value })} />
@@ -1601,8 +1738,9 @@ function Tasks({ data, onAdd, onDel, onToggle }) {
 
 const ListPage = ({ title, subtitle, children }) => (
   <div style={{ padding: "0 24px 24px" }} className="p9-rise">
-    <h2 style={{ fontFamily: "var(--display)", fontSize: 18, fontWeight: 700, letterSpacing: 0.2, margin: "0 0 2px", color: "var(--ink)" }}>{title}</h2>
-    <div style={{ fontSize: 13, color: "var(--ink-dim)", marginBottom: 14 }}>{subtitle}</div>
+    <h2 style={{ fontFamily: "var(--display)", fontSize: 19, fontWeight: 700, letterSpacing: -0.2, margin: "6px 0 2px", color: "var(--ink)", display: "flex", alignItems: "center", gap: 10 }}>
+      <span style={{ width: 4, height: 20, background: "var(--copper)", borderRadius: 2, display: "inline-block" }} />{title}</h2>
+    <div style={{ fontSize: 13, color: "var(--ink-dim)", marginBottom: 16, marginLeft: 14 }}>{subtitle}</div>
     {children}
   </div>
 );
@@ -1651,20 +1789,20 @@ const SectionTitle = ({ children }) => (
 );
 
 const Table = ({ head, children }) => (
-  <table style={{ width: "100%", borderCollapse: "collapse", background: "var(--panel)", border: "1px solid var(--line)", borderRadius: 4, overflow: "hidden" }}>
+  <div className="p9-scroll" style={{ overflowX: "auto", border: "1px solid var(--line)", borderRadius: 10, boxShadow: "var(--shadow-sm)" }}><table className="p9-tbl" style={{ width: "100%", borderCollapse: "collapse", background: "var(--panel)" }}>
     <thead>
       <tr>
         {head.map((h, i) => (
-          <th key={i} style={{ textAlign: "left", padding: "9px 12px", fontFamily: "var(--display)", fontSize: 11, letterSpacing: 2, color: "var(--ink-dim)", textTransform: "uppercase", borderBottom: "1px solid var(--line)" }}>{h}</th>
+          <th key={i} style={{ textAlign: "left", padding: "10px 14px", fontFamily: "var(--display)", fontSize: 11, fontWeight: 700, letterSpacing: 0.6, color: "var(--ink-dim)", textTransform: "uppercase", borderBottom: "1px solid var(--line)", whiteSpace: "nowrap" }}>{h}</th>
         ))}
       </tr>
     </thead>
     <tbody>{children}</tbody>
-  </table>
+  </table></div>
 );
 
 const Td = ({ children, dim, mono }) => (
-  <td style={{ padding: "9px 12px", borderBottom: "1px solid var(--line)", fontSize: 13, color: dim ? "var(--ink-dim)" : "var(--ink)", fontFamily: mono ? "var(--mono)" : "var(--body)" }}>
+  <td style={{ padding: "10px 14px", borderBottom: "1px solid var(--line)", fontSize: 13, color: dim ? "var(--ink-dim)" : "var(--ink)", fontFamily: mono ? "var(--mono)" : "var(--body)", verticalAlign: "top" }}>
     {children}
   </td>
 );
@@ -1674,5 +1812,5 @@ const Del = ({ onClick }) => (
 );
 
 const Empty = ({ children }) => (
-  <div style={{ color: "#90a4b8", fontSize: 13, padding: "16px 4px" }}>{children}</div>
+  <div style={{ color: "var(--ink-dim)", fontSize: 13.5, padding: "28px 20px", textAlign: "center", background: "var(--panel2)", border: "1px dashed var(--line)", borderRadius: 10 }}>{children}</div>
 );
