@@ -54,6 +54,35 @@ async function sendOutlookEmail({ to, subject, body }) {
   }
 }
 
+/* Map raw Supabase invite errors to short, human guidance. */
+function friendlyInviteError(text) {
+  const t = (text || "").toLowerCase();
+  if (t.includes("aren't set up") || t.includes("service_role") || t.includes("supabase_service"))
+    return "Invites aren't set up yet — add SUPABASE_SERVICE_ROLE_KEY in Vercel, then redeploy.";
+  if (t.includes("already") && (t.includes("registered") || t.includes("exist")))
+    return "They already have a login — they can just sign in.";
+  if (t.includes("rate") || t.includes("limit") || t.includes("too many"))
+    return "Email rate limit hit — Supabase free tier sends only a few invites per hour. Wait a bit, or add custom SMTP in Supabase.";
+  if (t.includes("redirect") || t.includes("not allowed"))
+    return "Add your app URL under Supabase → Authentication → URL Configuration (Redirect URLs), then retry.";
+  return (text || "").trim().slice(0, 200) || "Invite failed — check Supabase settings.";
+}
+
+/* Email a teammate a "create your login" invite via /api/invite (Supabase). */
+async function sendInvite(email) {
+  try {
+    const response = await fetch("/api/invite", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email, redirectTo: typeof window !== "undefined" ? window.location.origin : undefined }),
+    });
+    const res = await response.json().catch(() => ({}));
+    return res.ok ? { ok: true } : { ok: false, error: friendlyInviteError(res.error || "") };
+  } catch {
+    return { ok: false, error: "Couldn't reach the invite service. Try again." };
+  }
+}
+
 const STORAGE_KEY = "pipeline9-crm-v1";
 const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
 const today = () => new Date().toISOString().slice(0, 10);
@@ -1499,6 +1528,7 @@ function Team({ session }) {
   const [email, setEmail] = useState("");
   const [msg, setMsg] = useState(null);
   const [ping, setPing] = useState(null); // { to, text, status }
+  const [inviteState, setInviteState] = useState({}); // { [email]: statusText }
   const me = (session?.user?.email || "").toLowerCase();
   const myRole = seats?.find((s) => s.email.toLowerCase() === me)?.role;
 
@@ -1515,16 +1545,27 @@ function Team({ session }) {
       </ListPage>
     );
 
+  // Add the seat, then email them a "create your login" invite.
   const invite = async () => {
-    if (!email.trim()) return;
+    const addr = email.trim().toLowerCase();
+    if (!addr) return;
     setMsg(null);
     try {
-      await addSeat(email);
-      setMsg({ ok: true, text: `Seat added for ${email.trim()}. Tell them to open the app and create an account with that exact email.` });
+      await addSeat(addr);
       setEmail(""); refresh();
+      const r = await sendInvite(addr);
+      setMsg(r.ok
+        ? { ok: true, text: `Seat added — an invite to create their login was emailed to ${addr}.` }
+        : { ok: false, text: `Seat added for ${addr}, but the invite didn't send: ${r.error} Use "Invite" to retry.` });
     } catch (e) {
       setMsg({ ok: false, text: e.message.includes("policy") || e.message.includes("permission") ? "Only owners can add seats." : e.message });
     }
+  };
+  const doInvite = async (addr) => {
+    setInviteState((s) => ({ ...s, [addr]: "Sending…" }));
+    const r = await sendInvite(addr);
+    setInviteState((s) => ({ ...s, [addr]: r.ok ? "Invited ✓" : "✕ Failed" }));
+    if (!r.ok) setMsg({ ok: false, text: r.error });
   };
   const drop = async (s) => {
     setMsg(null);
@@ -1550,11 +1591,11 @@ function Team({ session }) {
 
   return (
     <>
-    <ListPage title="Team" subtitle="Each seat is an email allowed to sign in. Owners manage seats; members get full CRM access. Ping any teammate by email.">
+    <ListPage title="Team" subtitle="Add a seat and we'll email them a link to create their Pipeline login. Owners manage seats; members get full CRM access.">
       <div style={{ display: "flex", gap: 8, marginBottom: 14, flexWrap: "wrap" }}>
         <input style={{ flex: 1, minWidth: 240 }} type="email" placeholder="teammate@yourcompany.com"
           value={email} onChange={(e) => setEmail(e.target.value)} onKeyDown={(e) => e.key === "Enter" && invite()} />
-        <Btn onClick={invite}>Add seat</Btn>
+        <Btn onClick={invite}>Add seat &amp; invite</Btn>
         {seats?.length ? <Btn ghost color="var(--copper)" onClick={() => openPing(seats.map((s) => s.email).join(", "))}>✉ Ping all</Btn> : null}
       </div>
       {msg && <div style={{ marginBottom: 12, fontSize: 13, color: msg.ok ? "var(--green)" : "var(--red)" }}>{msg.text}</div>}
@@ -1570,6 +1611,10 @@ function Team({ session }) {
               <Td mono dim>{fmtDate((s.created_at || "").slice(0, 10))}</Td>
               <Td>
                 <span style={{ display: "flex", gap: 10, alignItems: "center", justifyContent: "flex-end" }}>
+                  <button onClick={() => doInvite(s.email)} title={"Email " + s.email + " a link to create their login"}
+                    style={{ background: "none", border: "1px solid var(--line)", borderRadius: "var(--radius)", color: inviteState[s.email] === "Invited ✓" ? "var(--green)" : "var(--copper)", cursor: "pointer", fontSize: 12, padding: "5px 10px", whiteSpace: "nowrap" }}>
+                    {inviteState[s.email] || "✉ Invite"}
+                  </button>
                   <button onClick={() => openPing(s.email)} title={"Ping " + s.email}
                     style={{ background: "none", border: "1px solid var(--line)", borderRadius: "var(--radius)", color: "var(--copper)", cursor: "pointer", fontSize: 12, padding: "5px 10px", whiteSpace: "nowrap" }}>
                     ✉ Ping
