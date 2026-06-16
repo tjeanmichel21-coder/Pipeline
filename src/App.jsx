@@ -4,7 +4,7 @@ import { loadAll, saveAll, syncClearBidEstimates, usingSharedDb, getSession, onA
 /* ============================================================
    PIPELINE CRM — ITB Pipeline + Job Tracking for a plumbing co.
    Pipeline: New ITB → Docs Requested → Docs Received →
-             Estimate Created → Estimate Sent → Won / Lost
+             Add Labor → Estimate Created → Estimate Sent → Won / Lost
    Won ITBs convert to Jobs (opportunities) with materials,
    labor, notes, and material invoices.
    ============================================================ */
@@ -13,9 +13,13 @@ const STAGES = [
   { id: "new", label: "New ITB", short: "NEW" },
   { id: "docs_requested", label: "Docs Requested", short: "DOC REQ" },
   { id: "docs_received", label: "Docs Received", short: "DOC RCV" },
+  { id: "add_labor", label: "Add Labor", short: "LABOR" },
   { id: "estimate_created", label: "Estimate Created", short: "EST MADE" },
   { id: "estimate_sent", label: "Estimate Sent", short: "EST SENT" },
 ];
+
+// When an ITB advances from "Docs Received" into "Add Labor", notify this address.
+const LABOR_NOTIFY_EMAIL = "davidc@coastalplumbingswfl.com";
 
 const STORAGE_KEY = "pipeline9-crm-v1";
 const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
@@ -66,6 +70,7 @@ export default function App() {
   const [selectedJob, setSelectedJob] = useState(null);
   const [showNewItb, setShowNewItb] = useState(false);
   const [error, setError] = useState("");
+  const [notice, setNotice] = useState("");
   const [session, setSession] = useState(null);
   const [authReady, setAuthReady] = useState(!usingSharedDb);
   const saveTimer = useRef(null);
@@ -131,6 +136,56 @@ export default function App() {
       stage: next.id,
       history: [...itb.history, { stage: next.id, date: today() }],
     });
+    // Notify when a bid crosses from Docs Received into Add Labor.
+    if (itb.stage === "docs_received" && next.id === "add_labor") notifyLaborMove(itb);
+  };
+
+  // Best-effort email via the Outlook/Microsoft 365 MCP tools (same path as alerts).
+  // Fires when an ITB enters the Add Labor stage; never blocks the stage move.
+  const notifyLaborMove = async (itb) => {
+    setNotice(`Notifying ${LABOR_NOTIFY_EMAIL} that "${itb.name}" is ready for labor…`);
+    try {
+      const response = await fetch("/api/claude", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          model: "claude-sonnet-4-20250514",
+          max_tokens: 1000,
+          messages: [
+            {
+              role: "user",
+              content:
+                `Use the Microsoft 365 / Outlook tools to send an email.\n` +
+                `To: ${LABOR_NOTIFY_EMAIL}\n` +
+                `Subject: Ready for Labor — ${itb.name} (${itb.client})\n` +
+                `Body:\n${itb.name} for ${itb.client} just moved from Docs Received to Add Labor in the Pipeline CRM and is ready for labor to be added.\n\n` +
+                `Estimated value: ${fmt(itb.value)}\n` +
+                (itb.address ? `Address: ${itb.address}\n` : "") +
+                (itb.contact ? `Contact: ${itb.contact}${itb.phone ? " · " + itb.phone : ""}\n` : "") +
+                `\n— Pipeline CRM\n\n` +
+                `After sending, reply with exactly the word SENT if it succeeded, or FAILED plus the reason.`,
+            },
+          ],
+          mcp_servers: [
+            { type: "url", url: "https://microsoft365.mcp.claude.com/mcp", name: "microsoft365" },
+          ],
+        }),
+      });
+      const res = await response.json();
+      const text = (res.content || []).filter((b) => b.type === "text").map((b) => b.text).join(" ");
+      if (text.includes("SENT")) {
+        setNotice(`Labor-ready notice emailed to ${LABOR_NOTIFY_EMAIL} ✓`);
+        setTimeout(() => setNotice(""), 6000);
+      } else {
+        setNotice("");
+        setError(text.trim().slice(0, 220) || "Couldn't email the labor-ready notice — check the Microsoft 365 connection.");
+        setTimeout(() => setError(""), 9000);
+      }
+    } catch {
+      setNotice("");
+      setError("Couldn't reach the email service for the labor-ready notice.");
+      setTimeout(() => setError(""), 9000);
+    }
   };
 
   const markLost = (itb) => {
@@ -281,6 +336,12 @@ export default function App() {
       {error && (
         <div style={{ margin: "0 24px 12px", padding: "8px 14px", background: "#fdebe8", color: "#b03a2e", fontSize: 13 }}>
           {error}
+        </div>
+      )}
+
+      {notice && (
+        <div style={{ margin: "0 24px 12px", padding: "8px 14px", background: "#e8f1fb", color: "#1f5fa6", fontSize: 13 }}>
+          {notice}
         </div>
       )}
 
