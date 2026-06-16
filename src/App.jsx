@@ -21,6 +21,18 @@ const STAGES = [
 // When an ITB advances from "Docs Received" into "Add Labor", notify this address.
 const LABOR_NOTIFY_EMAIL = "davidc@coastalplumbingswfl.com";
 
+/* Turn raw proxy/API failure text into a short, human, actionable message. */
+function friendlyEmailError(text) {
+  const t = (text || "").toLowerCase();
+  if (t.includes("anthropic_api_key"))
+    return "Email isn't set up yet — an admin needs to add ANTHROPIC_API_KEY in Vercel (Project → Settings → Environment Variables), then redeploy.";
+  if (t.includes("microsoft 365") || t.includes("microsoft365") || t.includes("outlook") || t.includes("authorize") || t.includes("not connected"))
+    return "Email needs authorization — the Microsoft 365 (Outlook) connection isn't linked to the AI service yet.";
+  if (t.includes("upstream error") || t.includes("502"))
+    return "Couldn't reach the email service — please try again in a moment.";
+  return (text || "").trim().slice(0, 220) || "Send failed — check the email configuration.";
+}
+
 /* Send an email through the existing /api/claude proxy + Microsoft 365 (Outlook) MCP.
    Reused by the labor-ready notice, team pings, and task-assignment notifications.
    Returns { ok, text }. `to` may be a single address or a comma-separated list. */
@@ -49,7 +61,8 @@ async function sendOutlookEmail({ to, subject, body }) {
   });
   const res = await response.json();
   const text = (res.content || []).filter((b) => b.type === "text").map((b) => b.text).join(" ");
-  return { ok: text.includes("SENT"), text };
+  const ok = text.includes("SENT");
+  return { ok, text: ok ? text : friendlyEmailError(text) };
 }
 
 const STORAGE_KEY = "pipeline9-crm-v1";
@@ -1923,7 +1936,7 @@ function Tasks({ data, onAdd, onDel, onToggle, onAssign }) {
     if (!t.assignee) return;
     setNotify((n) => ({ ...n, [t.id]: "Sending…" }));
     try {
-      const { ok, text } = await sendOutlookEmail({
+      const { ok } = await sendOutlookEmail({
         to: t.assignee,
         subject: `Task assigned to you — ${t.title}`,
         body:
@@ -1933,7 +1946,7 @@ function Tasks({ data, onAdd, onDel, onToggle, onAssign }) {
           (t.related ? `• Related to: ${t.related}\n` : "") +
           `\n— Pipeline CRM`,
       });
-      setNotify((n) => ({ ...n, [t.id]: ok ? "Notified ✓" : (text.trim().slice(0, 80) || "Send failed") }));
+      setNotify((n) => ({ ...n, [t.id]: ok ? "Notified ✓" : "✕ Not sent" }));
     } catch {
       setNotify((n) => ({ ...n, [t.id]: "Email error" }));
     }
