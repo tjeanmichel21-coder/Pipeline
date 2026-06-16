@@ -24,12 +24,16 @@ const LABOR_NOTIFY_EMAIL = "davidc@coastalplumbingswfl.com";
 /* Turn raw email failure text into a short, human, actionable message. */
 function friendlyEmailError(text) {
   const t = (text || "").toLowerCase();
-  if (t.includes("isn't set up") || t.includes("ms_tenant") || t.includes("ms_client") || t.includes("graph env"))
-    return "Email isn't set up yet — an admin needs to add the Microsoft Graph keys (MS_TENANT_ID, MS_CLIENT_ID, MS_CLIENT_SECRET, MS_SENDER) in Vercel, then redeploy.";
+  if (t.includes("isn't set up"))
+    return "Email isn't set up yet — add a free RESEND_API_KEY in Vercel (Settings → Environment Variables), then redeploy.";
+  if (t.includes("not verified") || t.includes("domain"))
+    return "Sender domain isn't verified yet — verify your domain in Resend (or, while testing, send only to your own address).";
+  if (t.includes("resend"))
+    return "Resend rejected the send — check your RESEND_API_KEY and the RESEND_FROM sender.";
   if (t.includes("auth failed") || t.includes("unauthorized") || t.includes("invalid_client") || t.includes("aadsts"))
-    return "Email authorization failed — check the Azure app credentials and that Mail.Send admin consent was granted.";
+    return "Email authorization failed — check the email credentials.";
   if (t.includes("graph send failed") || t.includes("forbidden") || t.includes("accessdenied") || t.includes("mailboxnotenabled"))
-    return "Outlook rejected the send — verify the sender mailbox (MS_SENDER) exists and the app has Mail.Send permission.";
+    return "Outlook rejected the send — verify the sender mailbox and Mail.Send permission.";
   if (t.includes("upstream") || t.includes("service error") || t.includes("502") || t.includes("failed to fetch"))
     return "Couldn't reach the email service — please try again in a moment.";
   return (text || "").trim().slice(0, 220) || "Send failed — check the email configuration.";
@@ -1583,7 +1587,7 @@ function Team({ session }) {
         subject: `Pipeline CRM — a ping${me ? " from " + me : ""}`,
         body: (ping.text.trim() || "Just pinging you — please check Pipeline CRM when you get a chance.") + `\n\n— Sent from Pipeline CRM`,
       });
-      setPing((p) => ({ ...p, status: { sending: false, ok, text: ok ? "Ping sent ✓" : (text.trim().slice(0, 200) || "Send failed — check the Microsoft 365 connection.") } }));
+      setPing((p) => ({ ...p, status: { sending: false, ok, text: ok ? "Ping sent ✓" : (text.trim().slice(0, 200) || "Send failed — check the email setup.") } }));
     } catch {
       setPing((p) => ({ ...p, status: { sending: false, ok: false, text: "Couldn't reach the email service." } }));
     }
