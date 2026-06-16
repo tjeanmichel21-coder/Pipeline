@@ -302,7 +302,7 @@ export default function App() {
           {[
             ["dashboard", "Home"],
             ["pipeline", `Pipeline (${active.length})`],
-            ["jobs", `Jobs (${data.jobs.length})`],
+            ["jobs", `Opportunities (${data.jobs.length})`],
             ["accounts", `Accounts (${data.accounts.length})`],
             ["contacts", `Contacts (${data.contacts.length})`],
             ["tasks", `Tasks (${data.tasks.filter((t) => !t.done).length})`],
@@ -328,7 +328,7 @@ export default function App() {
         <Stat label="Open ITBs" value={active.length} />
         <Stat label="Pipeline value" value={fmt(pipelineValue)} />
         <Stat label="Win rate" value={winRate === null ? "—" : winRate + "%"} />
-        <Stat label="Active jobs" value={data.jobs.filter((j) => j.status === "active").length} accent />
+        <Stat label="Active opps" value={data.jobs.filter((j) => j.status === "active").length} accent />
         <Stat label="ARR" value={fmt(totalArr)} accent />
         <Stat label={"Net new ARR " + thisYear} value={(narrYtd < 0 ? "-" : "") + fmt(Math.abs(narrYtd))} accent={narrYtd >= 0} />
       </div>
@@ -693,7 +693,7 @@ function ItbDrawer({ itb, onClose, onUpdate, onMove, onWin, onLose }) {
       <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
         {stageIdx > 0 && <Btn ghost onClick={() => onMove(-1)}>← Back a stage</Btn>}
         {!atEnd && <Btn onClick={() => onMove(1)}>Advance → {STAGES[stageIdx + 1].label}</Btn>}
-        {atEnd && <Btn color="var(--green)" onClick={onWin}>✓ WON — Create Job</Btn>}
+        {atEnd && <Btn color="var(--green)" onClick={onWin}>✓ Closed Won — Create Opportunity</Btn>}
         <Btn color="var(--red)" ghost onClick={onLose}>Mark Lost</Btn>
       </div>
 
@@ -767,13 +767,13 @@ function JobsList({ jobs, onOpen }) {
   if (!jobs.length)
     return (
       <div style={{ padding: 60, textAlign: "center", color: "var(--ink-dim)" }}>
-        No jobs yet — win an estimate in the pipeline to create one.
+        No opportunities yet — win an estimate in the pipeline to create one.
       </div>
     );
   return (
     <div style={{ padding: "0 24px 24px" }}>
       <h2 style={{ fontFamily: "var(--display)", fontSize: 18, fontWeight: 700, letterSpacing: 0.2, color: "var(--ink)" }}>
-        Won jobs
+        Opportunities
       </h2>
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(300px, 1fr))", gap: 12 }}>
         {jobs.map((j) => {
@@ -813,7 +813,7 @@ function JobDetail({ job, onBack, onUpdate, settings, onSettings }) {
   return (
     <div style={{ padding: "0 24px 24px" }}>
       <button onClick={onBack} style={{ background: "none", border: "none", color: "var(--copper)", cursor: "pointer", fontSize: 13, padding: 0, marginBottom: 8 }}>
-        ← All jobs
+        ← All opportunities
       </button>
       <div style={{ background: "var(--panel)", border: "1px solid var(--line)", borderTop: "3px solid var(--copper)", padding: 22, borderRadius: 10, boxShadow: "var(--shadow-sm)" }}>
         <div style={{ display: "flex", justifyContent: "space-between", flexWrap: "wrap", gap: 12 }}>
@@ -1133,7 +1133,7 @@ function Invoices({ job, onUpdate, settings, onSettings }) {
                 `To: ${settings.alertEmail}\n` +
                 `Subject: [URGENT] Invoice logged — ${inv.vendor} ${fmt(inv.amount)} (${job.name})\n` +
                 `Body:\nAn invoice was just logged by the AI reader in Pipeline:\n\n` +
-                `Job: ${job.name} (${job.client})\nVendor: ${inv.vendor}\nInvoice #: ${inv.ref || "n/a"}\nAmount: ${fmt(inv.amount)}\nDate: ${inv.date}\n${summary ? "Details: " + summary : ""}\n\n` +
+                `Opportunity: ${job.name} (${job.client})\nVendor: ${inv.vendor}\nInvoice #: ${inv.ref || "n/a"}\nAmount: ${fmt(inv.amount)}\nDate: ${inv.date}\n${summary ? "Details: " + summary : ""}\n\n` +
                 `Status: UNPAID — review and schedule payment.\n\n` +
                 `After sending, reply with exactly the word SENT if it succeeded, or FAILED plus the reason.`,
             },
@@ -1310,21 +1310,26 @@ function JobNotes({ job, onUpdate }) {
 /* ============== LOGO ============== */
 function PipeMark({ size = 36, light = false }) {
   const c1 = light ? "#ffffff" : "var(--copper)";
-  const c2 = light ? "rgba(255,255,255,0.55)" : "var(--copper-hi)";
+  const c2 = light ? "rgba(255,255,255,0.6)" : "var(--copper-hi)";
+  const badge = light ? "rgba(255,255,255,0.12)" : "var(--navy)";
   return (
     <svg width={size} height={size} viewBox="0 0 48 48" fill="none" aria-hidden="true">
-      <rect x="2" y="2" width="44" height="44" rx="11" fill={light ? "rgba(255,255,255,0.12)" : "var(--navy)"} />
-      {/* three pipe segments rising like a pipeline / bar chart, with bore holes */}
-      <g>
-        <rect x="11" y="27" width="7.5" height="11" rx="3.75" fill={c2} />
-        <circle cx="14.75" cy="27" r="2.1" fill={light ? "var(--navy)" : "#ffffff"} opacity={light ? "0.25" : "0.9"} />
-        <rect x="20.25" y="20" width="7.5" height="18" rx="3.75" fill={c1} />
-        <circle cx="24" cy="20" r="2.1" fill={light ? "var(--navy)" : "#ffffff"} opacity={light ? "0.25" : "0.9"} />
-        <rect x="29.5" y="11" width="7.5" height="27" rx="3.75" fill={c2} />
-        <circle cx="33.25" cy="11" r="2.1" fill={light ? "var(--navy)" : "#ffffff"} opacity={light ? "0.25" : "0.9"} />
+      <rect x="2" y="2" width="44" height="44" rx="11" fill={badge} />
+      {/* Crossed combination wrench + screwdriver — a blue-collar trades emblem */}
+      {/* Screwdriver (drawn first so the wrench sits on top at the crossing) */}
+      <g transform="rotate(-45 24 24)">
+        <rect x="20.5" y="8.5" width="7" height="12" rx="3" fill={c2} />
+        <rect x="22" y="20" width="4" height="15" rx="1.5" fill={c2} />
+        <path d="M22 35 H26 L24 40 Z" fill={c2} />
       </g>
-      {/* connecting flow line through the segment centers */}
-      <path d="M14.75 27 L24 20 L33.25 11" stroke={light ? "#ffffff" : "var(--copper-hi)"} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" opacity="0.65" />
+      {/* Combination wrench: box-ring end + open jaw */}
+      <g transform="rotate(45 24 24)">
+        <rect x="20.75" y="10" width="6.5" height="28" rx="3.25" fill={c1} />
+        <circle cx="24" cy="11" r="7" fill={c1} />
+        <circle cx="24" cy="11" r="3.2" fill={badge} />
+        <circle cx="24" cy="37" r="7" fill={c1} />
+        <path d="M24 37 L17.4 44.6 L30.6 44.6 Z" fill={badge} />
+      </g>
     </svg>
   );
 }
@@ -1382,7 +1387,7 @@ function Login() {
             Track every ITB, estimate, and job in one place — built for plumbing &amp; MEP contractors.
           </div>
           <div style={{ display: "flex", gap: 26, marginTop: 30 }}>
-            {[["Pipeline", "ITB → won"], ["Estimates", "ARR tracked"], ["Jobs", "materials · labor"]].map(([a, b]) => (
+            {[["Pipeline", "ITB → won"], ["Estimates", "ARR tracked"], ["Opportunities", "materials · labor"]].map(([a, b]) => (
               <div key={a}>
                 <div style={{ fontFamily: "var(--display)", fontWeight: 700, fontSize: 15 }}>{a}</div>
                 <div style={{ fontSize: 12, color: "rgba(255,255,255,0.6)" }}>{b}</div>
@@ -1522,7 +1527,7 @@ function GlobalSearch({ data, go }) {
     ...data.itbs.filter((i) => hit(i.name) || hit(i.client) || hit(i.contact)).slice(0, 4)
       .map((i) => ({ k: "itb", id: i.id, view: "pipeline", title: i.name, sub: "ITB · " + i.client, icon: "◔" })),
     ...data.jobs.filter((j) => hit(j.name) || hit(j.client)).slice(0, 4)
-      .map((j) => ({ k: "job", id: j.id, view: "jobs", title: j.name, sub: "Job · " + j.client, icon: "▣" })),
+      .map((j) => ({ k: "job", id: j.id, view: "jobs", title: j.name, sub: "Opportunity · " + j.client, icon: "▣" })),
     ...data.accounts.filter((a) => hit(a.name) || hit(a.industry)).slice(0, 3)
       .map((a) => ({ k: "account", id: a.id, view: "accounts", title: a.name, sub: "Account", icon: "◆" })),
     ...data.contacts.filter((c) => hit(c.name) || hit(c.accountName) || hit(c.email)).slice(0, 3)
@@ -1714,7 +1719,7 @@ function Accounts({ data, onAdd, onDel, onOpenItb }) {
         <input style={{ flex: 1, minWidth: 140 }} placeholder="Website" value={f.website} onChange={(e) => setF({ ...f, website: e.target.value })} />
         <Btn onClick={() => { if (f.name.trim()) { onAdd(f); setF({ name: "", industry: "", phone: "", website: "" }); } }}>Add</Btn>
       </div>
-      <Table head={["Account", "Industry", "Phone", "Open bids", "Jobs", "Open value", ""]}>
+      <Table head={["Account", "Industry", "Phone", "Open bids", "Opps", "Open value", ""]}>
         {data.accounts.map((a) => {
           const l = linked(a);
           const v = l.itbs.reduce((s, i) => s + (i.value || 0), 0);
