@@ -669,7 +669,7 @@ function ItbDrawer({ itb, onClose, onUpdate, onMove, onWin, onLose }) {
   const saveEdit = () => {
     onUpdate({
       name: form.name, client: form.client, contact: form.contact,
-      phone: form.phone, address: form.address,
+      phone: form.phone, email: form.email || "", address: form.address,
       value: Number(form.value) || 0, estimateDue: form.estimateDue || "",
     });
     setEdit(false);
@@ -693,8 +693,9 @@ function ItbDrawer({ itb, onClose, onUpdate, onMove, onWin, onLose }) {
               </div>
               <div style={{ display: "flex", gap: 8 }}>
                 <input value={form.phone} onChange={setField("phone")} placeholder="Phone" />
-                <input value={form.address} onChange={setField("address")} placeholder="Job site address" />
+                <input type="email" value={form.email || ""} onChange={setField("email")} placeholder="Contact email" />
               </div>
+              <input value={form.address} onChange={setField("address")} placeholder="Job site address" />
             </div>
           ) : (
             <>
@@ -702,6 +703,7 @@ function ItbDrawer({ itb, onClose, onUpdate, onMove, onWin, onLose }) {
               <div style={{ color: "var(--ink-dim)", fontSize: 13 }}>
                 {itb.client} · {itb.contact} · {itb.phone}
               </div>
+              {itb.email ? <div style={{ color: "var(--ink-dim)", fontSize: 13 }}>{itb.email}</div> : null}
               <div style={{ color: "var(--ink-dim)", fontSize: 13 }}>{itb.address}</div>
             </>
           )}
@@ -808,7 +810,7 @@ function ItbDrawer({ itb, onClose, onUpdate, onMove, onWin, onLose }) {
 
 /* ============== NEW ITB MODAL ============== */
 function NewItbModal({ onSave, onClose }) {
-  const [f, setF] = useState({ name: "", client: "", contact: "", phone: "", address: "", value: "", estimateDue: "" });
+  const [f, setF] = useState({ name: "", client: "", contact: "", phone: "", email: "", address: "", value: "", estimateDue: "" });
   const set = (k) => (e) => setF({ ...f, [k]: e.target.value });
   const valid = f.name.trim() && f.client.trim();
 
@@ -824,6 +826,7 @@ function NewItbModal({ onSave, onClose }) {
         <Field label="Contact" style={{ flex: 1 }}><input value={f.contact} onChange={set("contact")} /></Field>
         <Field label="Phone" style={{ flex: 1 }}><input value={f.phone} onChange={set("phone")} /></Field>
       </div>
+      <Field label="Contact email"><input type="email" value={f.email} onChange={set("email")} placeholder="contact@company.com" /></Field>
       <Field label="Job site address"><input value={f.address} onChange={set("address")} /></Field>
       <div style={{ display: "flex", gap: 12 }}>
         <Field label="Estimated value ($)" style={{ flex: 1 }}><input type="number" value={f.value} onChange={set("value")} /></Field>
