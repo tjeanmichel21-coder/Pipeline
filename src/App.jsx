@@ -21,48 +21,37 @@ const STAGES = [
 // When an ITB advances from "Docs Received" into "Add Labor", notify this address.
 const LABOR_NOTIFY_EMAIL = "davidc@coastalplumbingswfl.com";
 
-/* Turn raw proxy/API failure text into a short, human, actionable message. */
+/* Turn raw email failure text into a short, human, actionable message. */
 function friendlyEmailError(text) {
   const t = (text || "").toLowerCase();
-  if (t.includes("anthropic_api_key"))
-    return "Email isn't set up yet — an admin needs to add ANTHROPIC_API_KEY in Vercel (Project → Settings → Environment Variables), then redeploy.";
-  if (t.includes("microsoft 365") || t.includes("microsoft365") || t.includes("outlook") || t.includes("authorize") || t.includes("not connected"))
-    return "Email needs authorization — the Microsoft 365 (Outlook) connection isn't linked to the AI service yet.";
-  if (t.includes("upstream error") || t.includes("502"))
+  if (t.includes("isn't set up") || t.includes("ms_tenant") || t.includes("ms_client") || t.includes("graph env"))
+    return "Email isn't set up yet — an admin needs to add the Microsoft Graph keys (MS_TENANT_ID, MS_CLIENT_ID, MS_CLIENT_SECRET, MS_SENDER) in Vercel, then redeploy.";
+  if (t.includes("auth failed") || t.includes("unauthorized") || t.includes("invalid_client") || t.includes("aadsts"))
+    return "Email authorization failed — check the Azure app credentials and that Mail.Send admin consent was granted.";
+  if (t.includes("graph send failed") || t.includes("forbidden") || t.includes("accessdenied") || t.includes("mailboxnotenabled"))
+    return "Outlook rejected the send — verify the sender mailbox (MS_SENDER) exists and the app has Mail.Send permission.";
+  if (t.includes("upstream") || t.includes("service error") || t.includes("502") || t.includes("failed to fetch"))
     return "Couldn't reach the email service — please try again in a moment.";
   return (text || "").trim().slice(0, 220) || "Send failed — check the email configuration.";
 }
 
-/* Send an email through the existing /api/claude proxy + Microsoft 365 (Outlook) MCP.
-   Reused by the labor-ready notice, team pings, and task-assignment notifications.
-   Returns { ok, text }. `to` may be a single address or a comma-separated list. */
+/* Send an email through the Microsoft Graph (Outlook) function at /api/send-email.
+   No LLM / Anthropic billing. Reused by the labor-ready notice, team pings,
+   task notifications, and stale-bid alerts. `to` may be a comma-separated list.
+   Returns { ok, text }. */
 async function sendOutlookEmail({ to, subject, body }) {
-  const response = await fetch("/api/claude", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      model: "claude-sonnet-4-20250514",
-      max_tokens: 1000,
-      messages: [
-        {
-          role: "user",
-          content:
-            `Use the Microsoft 365 / Outlook tools to send an email.\n` +
-            `To: ${to}\n` +
-            `Subject: ${subject}\n` +
-            `Body:\n${body}\n\n` +
-            `After sending, reply with exactly the word SENT if it succeeded, or FAILED plus the reason.`,
-        },
-      ],
-      mcp_servers: [
-        { type: "url", url: "https://microsoft365.mcp.claude.com/mcp", name: "microsoft365" },
-      ],
-    }),
-  });
-  const res = await response.json();
-  const text = (res.content || []).filter((b) => b.type === "text").map((b) => b.text).join(" ");
-  const ok = text.includes("SENT");
-  return { ok, text: ok ? text : friendlyEmailError(text) };
+  try {
+    const response = await fetch("/api/send-email", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ to, subject, body }),
+    });
+    const res = await response.json().catch(() => ({}));
+    if (res.ok) return { ok: true, text: "SENT" };
+    return { ok: false, text: friendlyEmailError(res.error || "") };
+  } catch {
+    return { ok: false, text: friendlyEmailError("failed to fetch") };
+  }
 }
 
 const STORAGE_KEY = "pipeline9-crm-v1";
@@ -523,38 +512,15 @@ function AlertsBar({ staleItbs, settings, onSettings, onOpenItb }) {
       })
       .join("\n");
     try {
-      const response = await fetch("/api/claude", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          model: "claude-sonnet-4-20250514",
-          max_tokens: 1000,
-          messages: [
-            {
-              role: "user",
-              content:
-                `Use the Microsoft 365 / Outlook tools to send an email.\n` +
-                `To: ${settings.alertEmail}\n` +
-                `Subject: Pipeline Alert — ${count} ITB${count === 1 ? "" : "s"} need attention\n` +
-                `Body:\nThese bids have had no activity for ${settings.staleDays}+ days:\n\n${lines}\n\n` +
-                `Follow up before they go cold. — Pipeline CRM\n\n` +
-                `After sending, reply with exactly the word SENT if it succeeded, or FAILED plus the reason.`,
-            },
-          ],
-          mcp_servers: [
-            { type: "url", url: "https://microsoft365.mcp.claude.com/mcp", name: "microsoft365" },
-          ],
-        }),
+      const { ok, text } = await sendOutlookEmail({
+        to: settings.alertEmail,
+        subject: `Pipeline Alert — ${count} ITB${count === 1 ? "" : "s"} need attention`,
+        body: `These bids have had no activity for ${settings.staleDays}+ days:\n\n${lines}\n\nFollow up before they go cold.\n\n— Pipeline CRM`,
       });
-      const res = await response.json();
-      const text = (res.content || [])
-        .filter((b) => b.type === "text")
-        .map((b) => b.text)
-        .join(" ");
-      if (text.includes("SENT")) {
+      if (ok) {
         setStatus({ type: "ok", msg: "Alert emailed via Outlook ✓" });
       } else {
-        setStatus({ type: "error", msg: text.trim().slice(0, 220) || "Send failed — check your Microsoft 365 connection in Claude settings." });
+        setStatus({ type: "error", msg: text });
       }
     } catch {
       setStatus({ type: "error", msg: "Couldn't reach the email service. Try again." });
