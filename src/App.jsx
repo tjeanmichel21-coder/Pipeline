@@ -21,6 +21,37 @@ const STAGES = [
 // When an ITB advances from "Docs Received" into "Add Labor", notify this address.
 const LABOR_NOTIFY_EMAIL = "davidc@coastalplumbingswfl.com";
 
+/* Send an email through the existing /api/claude proxy + Microsoft 365 (Outlook) MCP.
+   Reused by the labor-ready notice, team pings, and task-assignment notifications.
+   Returns { ok, text }. `to` may be a single address or a comma-separated list. */
+async function sendOutlookEmail({ to, subject, body }) {
+  const response = await fetch("/api/claude", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      model: "claude-sonnet-4-20250514",
+      max_tokens: 1000,
+      messages: [
+        {
+          role: "user",
+          content:
+            `Use the Microsoft 365 / Outlook tools to send an email.\n` +
+            `To: ${to}\n` +
+            `Subject: ${subject}\n` +
+            `Body:\n${body}\n\n` +
+            `After sending, reply with exactly the word SENT if it succeeded, or FAILED plus the reason.`,
+        },
+      ],
+      mcp_servers: [
+        { type: "url", url: "https://microsoft365.mcp.claude.com/mcp", name: "microsoft365" },
+      ],
+    }),
+  });
+  const res = await response.json();
+  const text = (res.content || []).filter((b) => b.type === "text").map((b) => b.text).join(" ");
+  return { ok: text.includes("SENT"), text };
+}
+
 const STORAGE_KEY = "pipeline9-crm-v1";
 const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
 const today = () => new Date().toISOString().slice(0, 10);
@@ -144,36 +175,15 @@ export default function App() {
   // Fires when an ITB enters the Add Labor stage; never blocks the stage move.
   const notifyLaborMove = async (itb) => {
     setNotice(`Notifying ${LABOR_NOTIFY_EMAIL} that "${itb.name}" is ready for labor…`);
+    const body =
+      `${itb.name} for ${itb.client} just moved from Docs Received to Add Labor in the Pipeline CRM and is ready for labor to be added.\n\n` +
+      `Estimated value: ${fmt(itb.value)}\n` +
+      (itb.address ? `Address: ${itb.address}\n` : "") +
+      (itb.contact ? `Contact: ${itb.contact}${itb.phone ? " · " + itb.phone : ""}\n` : "") +
+      `\n— Pipeline CRM`;
     try {
-      const response = await fetch("/api/claude", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          model: "claude-sonnet-4-20250514",
-          max_tokens: 1000,
-          messages: [
-            {
-              role: "user",
-              content:
-                `Use the Microsoft 365 / Outlook tools to send an email.\n` +
-                `To: ${LABOR_NOTIFY_EMAIL}\n` +
-                `Subject: Ready for Labor — ${itb.name} (${itb.client})\n` +
-                `Body:\n${itb.name} for ${itb.client} just moved from Docs Received to Add Labor in the Pipeline CRM and is ready for labor to be added.\n\n` +
-                `Estimated value: ${fmt(itb.value)}\n` +
-                (itb.address ? `Address: ${itb.address}\n` : "") +
-                (itb.contact ? `Contact: ${itb.contact}${itb.phone ? " · " + itb.phone : ""}\n` : "") +
-                `\n— Pipeline CRM\n\n` +
-                `After sending, reply with exactly the word SENT if it succeeded, or FAILED plus the reason.`,
-            },
-          ],
-          mcp_servers: [
-            { type: "url", url: "https://microsoft365.mcp.claude.com/mcp", name: "microsoft365" },
-          ],
-        }),
-      });
-      const res = await response.json();
-      const text = (res.content || []).filter((b) => b.type === "text").map((b) => b.text).join(" ");
-      if (text.includes("SENT")) {
+      const { ok, text } = await sendOutlookEmail({ to: LABOR_NOTIFY_EMAIL, subject: `Ready for Labor — ${itb.name} (${itb.client})`, body });
+      if (ok) {
         setNotice(`✓ Labor-ready notice emailed to ${LABOR_NOTIFY_EMAIL} — ${fmtDate(today())}`);
       } else {
         setNotice("");
@@ -369,7 +379,8 @@ export default function App() {
       )}
       {view === "tasks" && (
         <Tasks data={data} onAdd={(r) => addRec("tasks", r)} onDel={(id) => delRec("tasks", id)}
-          onToggle={(id, done) => updateRec("tasks", id, { done })} />
+          onToggle={(id, done) => updateRec("tasks", id, { done })}
+          onAssign={(id, assignee) => updateRec("tasks", id, { assignee })} />
       )}
       {view === "team" && <Team session={session} />}
       {view === "pipeline" && (
@@ -1443,6 +1454,7 @@ function Team({ session }) {
   const [seats, setSeats] = useState(null);
   const [email, setEmail] = useState("");
   const [msg, setMsg] = useState(null);
+  const [ping, setPing] = useState(null); // { to, text, status }
   const me = (session?.user?.email || "").toLowerCase();
   const myRole = seats?.find((s) => s.email.toLowerCase() === me)?.role;
 
@@ -1476,12 +1488,30 @@ function Team({ session }) {
     catch (e) { setMsg({ ok: false, text: e.message.includes("policy") || e.message.includes("permission") ? "Only owners can remove seats." : e.message }); }
   };
 
+  const openPing = (to) => setPing({ to, text: "", status: null });
+  const sendPing = async () => {
+    if (!ping) return;
+    setPing((p) => ({ ...p, status: { sending: true, text: "Sending…" } }));
+    try {
+      const { ok, text } = await sendOutlookEmail({
+        to: ping.to,
+        subject: `Pipeline CRM — a ping${me ? " from " + me : ""}`,
+        body: (ping.text.trim() || "Just pinging you — please check Pipeline CRM when you get a chance.") + `\n\n— Sent from Pipeline CRM`,
+      });
+      setPing((p) => ({ ...p, status: { sending: false, ok, text: ok ? "Ping sent ✓" : (text.trim().slice(0, 200) || "Send failed — check the Microsoft 365 connection.") } }));
+    } catch {
+      setPing((p) => ({ ...p, status: { sending: false, ok: false, text: "Couldn't reach the email service." } }));
+    }
+  };
+
   return (
-    <ListPage title="Team" subtitle="Each seat is an email allowed to sign in. Owners manage seats; members get full CRM access.">
+    <>
+    <ListPage title="Team" subtitle="Each seat is an email allowed to sign in. Owners manage seats; members get full CRM access. Ping any teammate by email.">
       <div style={{ display: "flex", gap: 8, marginBottom: 14, flexWrap: "wrap" }}>
         <input style={{ flex: 1, minWidth: 240 }} type="email" placeholder="teammate@yourcompany.com"
           value={email} onChange={(e) => setEmail(e.target.value)} onKeyDown={(e) => e.key === "Enter" && invite()} />
         <Btn onClick={invite}>Add seat</Btn>
+        {seats?.length ? <Btn ghost color="var(--copper)" onClick={() => openPing(seats.map((s) => s.email).join(", "))}>✉ Ping all</Btn> : null}
       </div>
       {msg && <div style={{ marginBottom: 12, fontSize: 13, color: msg.ok ? "var(--green)" : "var(--red)" }}>{msg.text}</div>}
       {seats === null && <Empty>Loading seats…</Empty>}
@@ -1494,7 +1524,15 @@ function Team({ session }) {
                 <span style={{ fontSize: 11, fontWeight: 700, color: s.role === "owner" ? "var(--copper)" : "var(--ink-dim)", textTransform: "uppercase", letterSpacing: 1 }}>{s.role}</span>
               </Td>
               <Td mono dim>{fmtDate((s.created_at || "").slice(0, 10))}</Td>
-              <Td>{s.role !== "owner" && myRole === "owner" ? <Del onClick={() => drop(s)} /> : null}</Td>
+              <Td>
+                <span style={{ display: "flex", gap: 10, alignItems: "center", justifyContent: "flex-end" }}>
+                  <button onClick={() => openPing(s.email)} title={"Ping " + s.email}
+                    style={{ background: "none", border: "1px solid var(--line)", borderRadius: "var(--radius)", color: "var(--copper)", cursor: "pointer", fontSize: 12, padding: "5px 10px", whiteSpace: "nowrap" }}>
+                    ✉ Ping
+                  </button>
+                  {s.role !== "owner" && myRole === "owner" ? <Del onClick={() => drop(s)} /> : null}
+                </span>
+              </Td>
             </tr>
           ))}
         </Table>
@@ -1503,6 +1541,35 @@ function Team({ session }) {
         How it works: add a seat → your teammate opens the app URL → "Create account" with that email → they're in. Removing a seat locks them out of all data on their next request.
       </div>
     </ListPage>
+    {ping && (
+      <Overlay narrow onClose={() => setPing(null)}>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
+          <div>
+            <div style={{ fontFamily: "var(--display)", fontSize: 12, letterSpacing: 3, color: "var(--copper)", textTransform: "uppercase" }}>Ping team</div>
+            <h2 style={{ margin: "4px 0 2px", fontFamily: "var(--display)", fontSize: 20, fontWeight: 700 }}>Send a ping</h2>
+            <div style={{ color: "var(--ink-dim)", fontSize: 13, wordBreak: "break-word" }}>To: {ping.to}</div>
+          </div>
+          <CloseBtn onClick={() => setPing(null)} />
+        </div>
+        <Field label="Message">
+          <textarea rows={5} placeholder="Optional — a quick note. Leave blank to send a generic check-in." value={ping.text}
+            onChange={(e) => setPing((p) => ({ ...p, text: e.target.value }))} />
+        </Field>
+        {ping.status && (
+          <div style={{ marginTop: 12, fontSize: 13, padding: "9px 12px", borderRadius: 6,
+            background: ping.status.ok ? "#eaf6ef" : ping.status.sending ? "#e8f1fb" : "#fdeceb",
+            color: ping.status.ok ? "var(--green)" : ping.status.sending ? "#1f5fa6" : "var(--red)",
+            border: "1px solid " + (ping.status.ok ? "#bfe3cd" : ping.status.sending ? "#c9def5" : "#f4cdca") }}>
+            {ping.status.text}
+          </div>
+        )}
+        <div style={{ display: "flex", gap: 8, marginTop: 16 }}>
+          <Btn onClick={sendPing} disabled={ping.status?.sending}>{ping.status?.sending ? "Sending…" : "Send ping"}</Btn>
+          <Btn ghost onClick={() => setPing(null)}>Close</Btn>
+        </div>
+      </Overlay>
+    )}
+    </>
   );
 }
 
@@ -1776,27 +1843,81 @@ function Contacts({ data, onAdd, onDel }) {
 }
 
 /* ============== TASKS ============== */
-function Tasks({ data, onAdd, onDel, onToggle }) {
-  const [f, setF] = useState({ title: "", due: today(), related: "" });
+function Tasks({ data, onAdd, onDel, onToggle, onAssign }) {
+  const [f, setF] = useState({ title: "", due: today(), related: "", assignee: "" });
+  const [seats, setSeats] = useState([]);
+  const [notify, setNotify] = useState({}); // { [taskId]: statusText }
+  useEffect(() => { if (usingSharedDb) listSeats().then((s) => setSeats(s || [])).catch(() => setSeats([])); }, []);
+
   const overdue = (t) => !t.done && t.due && t.due < today();
   const sorted = [...data.tasks].sort((a, b) => (a.done !== b.done ? (a.done ? 1 : -1) : (a.due || "9999") < (b.due || "9999") ? -1 : 1));
+  const reset = () => setF({ title: "", due: today(), related: "", assignee: "" });
+  const add = () => { if (f.title.trim()) { onAdd(f); reset(); } };
+
+  const notifyAssignee = async (t) => {
+    if (!t.assignee) return;
+    setNotify((n) => ({ ...n, [t.id]: "Sending…" }));
+    try {
+      const { ok, text } = await sendOutlookEmail({
+        to: t.assignee,
+        subject: `Task assigned to you — ${t.title}`,
+        body:
+          `You've been assigned a task in Pipeline CRM:\n\n` +
+          `• ${t.title}\n` +
+          `• Due: ${fmtDate(t.due)}\n` +
+          (t.related ? `• Related to: ${t.related}\n` : "") +
+          `\n— Pipeline CRM`,
+      });
+      setNotify((n) => ({ ...n, [t.id]: ok ? "Notified ✓" : (text.trim().slice(0, 80) || "Send failed") }));
+    } catch {
+      setNotify((n) => ({ ...n, [t.id]: "Email error" }));
+    }
+  };
+
+  // Options for an assignee <select>; always keeps the current value selectable
+  // even if that person no longer holds a seat.
+  const seatOptions = (current) => (
+    <>
+      <option value="">Unassigned</option>
+      {seats.map((s) => <option key={s.id} value={s.email}>{s.email}</option>)}
+      {current && !seats.some((s) => s.email === current) && <option value={current}>{current}</option>}
+    </>
+  );
+
   return (
-    <ListPage title="Tasks" subtitle="Follow-ups, call-backs, doc chases — nothing slips.">
+    <ListPage title="Tasks" subtitle="Follow-ups, call-backs, doc chases — assign them to a teammate so nothing slips.">
       <div style={{ display: "flex", gap: 8, marginBottom: 14, flexWrap: "wrap" }}>
         <input style={{ flex: 2, minWidth: 200 }} placeholder="Task — e.g. Call Dana about Riverside docs" value={f.title}
           onChange={(e) => setF({ ...f, title: e.target.value })}
-          onKeyDown={(e) => { if (e.key === "Enter" && f.title.trim()) { onAdd(f); setF({ title: "", due: today(), related: "" }); } }} />
+          onKeyDown={(e) => { if (e.key === "Enter") add(); }} />
         <input style={{ width: 150 }} type="date" value={f.due} onChange={(e) => setF({ ...f, due: e.target.value })} />
-        <input style={{ flex: 1, minWidth: 150 }} placeholder="Related to (ITB, job, account…)" value={f.related} onChange={(e) => setF({ ...f, related: e.target.value })} />
-        <Btn onClick={() => { if (f.title.trim()) { onAdd(f); setF({ title: "", due: today(), related: "" }); } }}>Add</Btn>
+        <input style={{ flex: 1, minWidth: 140 }} placeholder="Related to (ITB, opp, account…)" value={f.related} onChange={(e) => setF({ ...f, related: e.target.value })} />
+        <select style={{ width: 170 }} value={f.assignee} onChange={(e) => setF({ ...f, assignee: e.target.value })} title="Assign to a team member">
+          {seatOptions(f.assignee)}
+        </select>
+        <Btn onClick={add}>Add</Btn>
       </div>
+      {usingSharedDb && seats.length === 0 && (
+        <div style={{ fontSize: 12, color: "var(--ink-dim)", marginBottom: 10 }}>Add teammates on the Team tab to assign tasks to them.</div>
+      )}
       {sorted.map((t) => (
         <div key={t.id} className="p9-card" style={{ display: "flex", gap: 12, alignItems: "center", padding: "11px 14px", background: "var(--panel)", border: "1px solid " + (overdue(t) ? "var(--red)" : "var(--line)"), borderRadius: 4, marginBottom: 8, boxShadow: "var(--shadow-sm)", opacity: t.done ? 0.55 : 1 }}>
           <input type="checkbox" checked={!!t.done} onChange={(e) => onToggle(t.id, e.target.checked)} style={{ width: "auto" }} />
-          <span style={{ flex: 1, fontSize: 14, textDecoration: t.done ? "line-through" : "none" }}>
+          <span style={{ flex: 1, fontSize: 14, textDecoration: t.done ? "line-through" : "none", minWidth: 120 }}>
             {t.title}{t.related ? <span style={{ color: "var(--ink-dim)" }}> — {t.related}</span> : null}
           </span>
-          <span style={{ fontFamily: "var(--mono)", fontSize: 11.5, color: overdue(t) ? "var(--red)" : "var(--ink-dim)", fontWeight: overdue(t) ? 600 : 400 }}>
+          <select value={t.assignee || ""} title="Assignee"
+            onChange={(e) => { onAssign(t.id, e.target.value); setNotify((n) => ({ ...n, [t.id]: undefined })); }}
+            style={{ width: 160, fontSize: 12, padding: "6px 8px" }}>
+            {seatOptions(t.assignee)}
+          </select>
+          {t.assignee && (
+            <button onClick={() => notifyAssignee(t)} title={"Email " + t.assignee + " about this task"}
+              style={{ background: "none", border: "1px solid var(--line)", borderRadius: "var(--radius)", color: notify[t.id] === "Notified ✓" ? "var(--green)" : "var(--copper)", cursor: "pointer", fontSize: 12, padding: "5px 9px", whiteSpace: "nowrap" }}>
+              {notify[t.id] || "✉ Notify"}
+            </button>
+          )}
+          <span style={{ fontFamily: "var(--mono)", fontSize: 11.5, color: overdue(t) ? "var(--red)" : "var(--ink-dim)", fontWeight: overdue(t) ? 600 : 400, whiteSpace: "nowrap" }}>
             {overdue(t) ? "OVERDUE · " : ""}{fmtDate(t.due)}
           </span>
           <Del onClick={() => onDel(t.id)} />
