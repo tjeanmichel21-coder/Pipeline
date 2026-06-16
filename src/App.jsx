@@ -298,7 +298,7 @@ export default function App() {
             }} />
           </div>
         </div>
-        <nav style={{ display: "flex", gap: 0, padding: "0 14px", background: "var(--copper)" }}>
+        <nav style={{ display: "flex", gap: 0, padding: "0 12px", background: "#ffffff", borderBottom: "1px solid var(--line)", boxShadow: "var(--shadow-sm)" }}>
           {[
             ["dashboard", "Home"],
             ["pipeline", `Pipeline (${active.length})`],
@@ -309,13 +309,13 @@ export default function App() {
             ["team", "Team"],
           ].map(([v, label]) => (
             <button key={v} onClick={() => { setView(v); setSelectedJob(null); }}
+              className={"p9-tab" + (view === v ? " on" : "")}
               style={{
-                fontFamily: "var(--body)", fontSize: 13, padding: "11px 16px",
-                background: view === v ? "rgba(255,255,255,0.16)" : "transparent",
-                color: "#ffffff",
+                fontFamily: "var(--body)", fontSize: 13.5, padding: "12px 16px",
+                background: "transparent",
+                color: view === v ? "var(--copper)" : "#3e3e3c",
                 border: "none",
-                borderBottom: "3px solid " + (view === v ? "#ffffff" : "transparent"),
-                cursor: "pointer", fontWeight: 600, transition: "background .15s ease",
+                cursor: "pointer", fontWeight: view === v ? 700 : 400,
               }}>
               {label}
             </button>
@@ -402,60 +402,64 @@ function Shell({ children }) {
     <div className="p9-root" style={{ minHeight: "100vh", color: "var(--ink)", fontFamily: "var(--body)" }}>
       <style>{`
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Spline+Sans+Mono:wght@400;500;600&display=swap');
+        /* ── Salesforce Lightning Design System (SLDS) theme tokens ── */
         :root {
-          --bg: #f3f4f6;
+          --bg: #f3f3f3;          /* SLDS app background */
           --panel: #ffffff;
-          --panel2: #f6f9fc;
-          --line: #e3e8f0;
-          --ink: #181818;
-          --ink-dim: #647488;
+          --panel2: #fafaf9;      /* SLDS neutral surface / table header */
+          --line: #dddbda;        /* SLDS color border */
+          --ink: #181818;         /* SLDS text default */
+          --ink-dim: #706e6b;     /* SLDS text weak */
           --navy: #032d60;
           --navy2: #014486;
-          --copper: #0176d3;
-          --copper-hi: #1b96ff;
+          --copper: #0176d3;      /* SLDS brand */
+          --copper-hi: #1b96ff;   /* SLDS brand light / focus */
           --copper-dim: #aacbff;
-          --green: #2e844a;
-          --red: #c23934;
-          --display: 'Inter', sans-serif;
-          --body: 'Inter', sans-serif;
+          --green: #2e844a;       /* SLDS success */
+          --red: #ba0517;         /* SLDS error / destructive */
+          --display: 'Inter', 'Salesforce Sans', Arial, sans-serif;
+          --body: 'Inter', 'Salesforce Sans', Arial, sans-serif;
           --mono: 'Spline Sans Mono', monospace;
-          --shadow-sm: 0 1px 2px rgba(12,37,67,.05), 0 1px 3px rgba(12,37,67,.04);
-          --shadow-md: 0 4px 14px rgba(12,37,67,.10), 0 2px 5px rgba(12,37,67,.06);
+          --radius: 0.25rem;      /* SLDS border-radius-medium */
+          --shadow-sm: 0 2px 2px 0 rgba(0,0,0,.10);
+          --shadow-md: 0 2px 3px 0 rgba(0,0,0,.16);
         }
         * { box-sizing: border-box; }
         .p9-root { background: var(--bg); }
         input, select, textarea {
-          background: #ffffff; border: 1px solid #c9c9c9; color: var(--ink);
-          padding: 8px 11px; font-family: var(--body); font-size: 14px; width: 100%;
-          border-radius: 4px; transition: border-color .15s ease, box-shadow .15s ease;
+          background: #ffffff; border: 1px solid var(--line); color: var(--ink);
+          padding: 8px 11px; font-family: var(--body); font-size: 13px; width: 100%;
+          border-radius: var(--radius); transition: border-color .1s linear, box-shadow .1s linear;
         }
         input:focus, select:focus, textarea:focus {
-          outline: none; border-color: var(--copper);
-          box-shadow: 0 0 0 3px rgba(1,118,211,.16);
+          outline: none; border-color: var(--copper-hi);
+          box-shadow: 0 0 3px 0 var(--copper);
         }
-        ::placeholder { color: #93a6ba; }
+        ::placeholder { color: #969492; }
         button { font-family: var(--body); }
+        /* SLDS buttons are rectangular with a 0.25rem radius — never pills. */
+        .p9-btn { border-radius: var(--radius) !important; }
         ::-webkit-scrollbar { height: 10px; width: 10px; }
-        ::-webkit-scrollbar-thumb { background: #c4d2e2; border-radius: 6px; }
+        ::-webkit-scrollbar-thumb { background: #c9c7c5; border-radius: 6px; }
         ::-webkit-scrollbar-track { background: transparent; }
 
-        @keyframes p9rise { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
-        .p9-rise { animation: p9rise .45s cubic-bezier(.22,.8,.32,1) both; }
-        .p9-card { transition: transform .18s ease, box-shadow .18s ease, border-color .18s ease; }
-        .p9-card { border-radius: 10px; } .p9-card:hover { box-shadow: var(--shadow-md); border-color: var(--copper-dim) !important; }
-        .p9-btn { transition: filter .15s ease, transform .08s ease, box-shadow .15s ease; }
-        .p9-btn:hover:not(:disabled) { filter: brightness(0.94); }
+        @keyframes p9rise { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+        .p9-rise { animation: p9rise .2s ease both; }
+        .p9-card { transition: box-shadow .1s linear, border-color .1s linear; border-radius: var(--radius); }
+        .p9-card:hover { box-shadow: var(--shadow-md); border-color: #c9c7c5 !important; }
+        .p9-btn { transition: background .1s linear, box-shadow .1s linear; }
+        .p9-btn:hover:not(:disabled) { filter: brightness(0.96); }
         .p9-btn:active:not(:disabled) { transform: translateY(1px); }
-        .p9-tab { position: relative; transition: color .15s ease; }
+        .p9-tab { position: relative; transition: color .1s linear; }
         .p9-tab::after {
-          content: ""; position: absolute; left: 18px; right: 18px; bottom: -1px; height: 3px;
-          border-radius: 3px 3px 0 0; background: var(--copper);
-          transform: scaleX(0); transition: transform .2s cubic-bezier(.22,.8,.32,1);
+          content: ""; position: absolute; left: 0; right: 0; bottom: -1px; height: 3px;
+          background: var(--copper);
+          transform: scaleX(0); transition: transform .1s linear;
         }
         .p9-tab.on::after { transform: scaleX(1); }
-        table.p9-tbl tbody tr:nth-child(even) { background: #fbfcfe; }
-        table.p9-tbl tbody tr:hover { background: #f0f6fd; }
-        table.p9-tbl thead th { background: var(--panel2); position: sticky; top: 0; }
+        table.p9-tbl tbody tr:nth-child(even) { background: #fafaf9; }
+        table.p9-tbl tbody tr:hover { background: #f3f9fe; }
+        table.p9-tbl thead th { background: #fafaf9; position: sticky; top: 0; }
         .p9-scroll::-webkit-scrollbar { height: 8px; }
         @media (prefers-reduced-motion: reduce) { .p9-rise, .p9-card, .p9-btn, .p9-tab::after { animation: none; transition: none; } }
       `}</style>
