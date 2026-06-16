@@ -662,23 +662,57 @@ const MiniBtn = ({ children, onClick }) => (
 /* ============== ITB DRAWER ============== */
 function ItbDrawer({ itb, onClose, onUpdate, onMove, onWin, onLose }) {
   const [note, setNote] = useState("");
+  const [edit, setEdit] = useState(false);
+  const [form, setForm] = useState(itb);
+  const setField = (k) => (e) => setForm({ ...form, [k]: e.target.value });
+  const startEdit = () => { setForm(itb); setEdit(true); };
+  const saveEdit = () => {
+    onUpdate({
+      name: form.name, client: form.client, contact: form.contact,
+      phone: form.phone, address: form.address,
+      value: Number(form.value) || 0, estimateDue: form.estimateDue || "",
+    });
+    setEdit(false);
+  };
   const stageIdx = STAGES.findIndex((s) => s.id === itb.stage);
   const atEnd = itb.stage === "estimate_sent";
 
   return (
     <Overlay onClose={onClose}>
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
-        <div>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 10 }}>
+        <div style={{ flex: 1 }}>
           <div style={{ fontFamily: "var(--display)", fontSize: 12, letterSpacing: 3, color: "var(--copper)", textTransform: "uppercase" }}>
             Intent to Bid
           </div>
-          <h2 style={{ margin: "4px 0 2px", fontFamily: "var(--display)", fontSize: 21, fontWeight: 700, letterSpacing: -0.2 }}>{itb.name}</h2>
-          <div style={{ color: "var(--ink-dim)", fontSize: 13 }}>
-            {itb.client} · {itb.contact} · {itb.phone}
-          </div>
-          <div style={{ color: "var(--ink-dim)", fontSize: 13 }}>{itb.address}</div>
+          {edit ? (
+            <div style={{ display: "grid", gap: 8, marginTop: 8 }}>
+              <input value={form.name} onChange={setField("name")} placeholder="Project name" />
+              <div style={{ display: "flex", gap: 8 }}>
+                <input value={form.client} onChange={setField("client")} placeholder="Client / GC" />
+                <input value={form.contact} onChange={setField("contact")} placeholder="Contact" />
+              </div>
+              <div style={{ display: "flex", gap: 8 }}>
+                <input value={form.phone} onChange={setField("phone")} placeholder="Phone" />
+                <input value={form.address} onChange={setField("address")} placeholder="Job site address" />
+              </div>
+            </div>
+          ) : (
+            <>
+              <h2 style={{ margin: "4px 0 2px", fontFamily: "var(--display)", fontSize: 21, fontWeight: 700, letterSpacing: -0.2 }}>{itb.name}</h2>
+              <div style={{ color: "var(--ink-dim)", fontSize: 13 }}>
+                {itb.client} · {itb.contact} · {itb.phone}
+              </div>
+              <div style={{ color: "var(--ink-dim)", fontSize: 13 }}>{itb.address}</div>
+            </>
+          )}
         </div>
-        <CloseBtn onClick={onClose} />
+        <div style={{ display: "flex", gap: 8, flexShrink: 0 }}>
+          {!edit && (
+            <button onClick={startEdit} title="Edit details"
+              style={{ background: "none", border: "1px solid var(--line)", color: "var(--copper)", width: 30, height: 30, cursor: "pointer", fontSize: 14, borderRadius: "var(--radius)" }}>✎</button>
+          )}
+          <CloseBtn onClick={onClose} />
+        </div>
       </div>
 
       {/* stage path (chevrons) */}
@@ -702,17 +736,42 @@ function ItbDrawer({ itb, onClose, onUpdate, onMove, onWin, onLose }) {
         })}
       </div>
 
-      <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-        {stageIdx > 0 && <Btn ghost onClick={() => onMove(-1)}>← Back a stage</Btn>}
-        {!atEnd && <Btn onClick={() => onMove(1)}>Advance → {STAGES[stageIdx + 1].label}</Btn>}
-        {atEnd && <Btn color="var(--green)" onClick={onWin}>✓ Closed Won — Create Opportunity</Btn>}
-        <Btn color="var(--red)" ghost onClick={onLose}>Mark Lost</Btn>
-      </div>
+      {edit ? (
+        <div style={{ display: "flex", gap: 12, flexWrap: "wrap", alignItems: "flex-end" }}>
+          <Field label="Estimate value ($)" style={{ flex: 1, minWidth: 150, marginTop: 0 }}>
+            <input type="number" value={form.value} onChange={setField("value")} />
+          </Field>
+          <Field label="Estimate due date" style={{ flex: 1, minWidth: 150, marginTop: 0 }}>
+            <input type="date" value={form.estimateDue || ""} onChange={setField("estimateDue")} />
+          </Field>
+          <div style={{ display: "flex", gap: 8 }}>
+            <Btn onClick={saveEdit}>Save</Btn>
+            <Btn ghost onClick={() => setEdit(false)}>Cancel</Btn>
+          </div>
+        </div>
+      ) : (
+        <>
+          <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+            {stageIdx > 0 && <Btn ghost onClick={() => onMove(-1)}>← Back a stage</Btn>}
+            {!atEnd && <Btn onClick={() => onMove(1)}>Advance → {STAGES[stageIdx + 1].label}</Btn>}
+            {atEnd && <Btn color="var(--green)" onClick={onWin}>✓ Closed Won — Create Opportunity</Btn>}
+            <Btn color="var(--red)" ghost onClick={onLose}>Mark Lost</Btn>
+          </div>
 
-      <Field label="Estimate value">
-        <input type="number" value={itb.value}
-          onChange={(e) => onUpdate({ value: Number(e.target.value) || 0 })} style={{ maxWidth: 200 }} />
-      </Field>
+          <div style={{ display: "flex", gap: 30, marginTop: 16, flexWrap: "wrap" }}>
+            <div>
+              <div style={{ fontFamily: "var(--display)", fontSize: 11, letterSpacing: 2, color: "var(--ink-dim)", textTransform: "uppercase", marginBottom: 4 }}>Estimate value</div>
+              <div style={{ fontFamily: "var(--mono)", fontSize: 18, color: "var(--copper)" }}>{fmt(itb.value)}</div>
+            </div>
+            <div>
+              <div style={{ fontFamily: "var(--display)", fontSize: 11, letterSpacing: 2, color: "var(--ink-dim)", textTransform: "uppercase", marginBottom: 4 }}>Estimate due</div>
+              <div style={{ fontFamily: "var(--mono)", fontSize: 18, color: itb.estimateDue && itb.estimateDue < today() ? "var(--red)" : "var(--ink)" }}>
+                {itb.estimateDue ? fmtDate(itb.estimateDue) : "—"}{itb.estimateDue && itb.estimateDue < today() ? " · OVERDUE" : ""}
+              </div>
+            </div>
+          </div>
+        </>
+      )}
 
       <SectionTitle>Notes</SectionTitle>
       <div style={{ display: "flex", gap: 8 }}>
@@ -749,7 +808,7 @@ function ItbDrawer({ itb, onClose, onUpdate, onMove, onWin, onLose }) {
 
 /* ============== NEW ITB MODAL ============== */
 function NewItbModal({ onSave, onClose }) {
-  const [f, setF] = useState({ name: "", client: "", contact: "", phone: "", address: "", value: "" });
+  const [f, setF] = useState({ name: "", client: "", contact: "", phone: "", address: "", value: "", estimateDue: "" });
   const set = (k) => (e) => setF({ ...f, [k]: e.target.value });
   const valid = f.name.trim() && f.client.trim();
 
@@ -766,7 +825,10 @@ function NewItbModal({ onSave, onClose }) {
         <Field label="Phone" style={{ flex: 1 }}><input value={f.phone} onChange={set("phone")} /></Field>
       </div>
       <Field label="Job site address"><input value={f.address} onChange={set("address")} /></Field>
-      <Field label="Estimated value ($)"><input type="number" value={f.value} onChange={set("value")} /></Field>
+      <div style={{ display: "flex", gap: 12 }}>
+        <Field label="Estimated value ($)" style={{ flex: 1 }}><input type="number" value={f.value} onChange={set("value")} /></Field>
+        <Field label="Estimate due date" style={{ flex: 1 }}><input type="date" value={f.estimateDue} onChange={set("estimateDue")} /></Field>
+      </div>
       <div style={{ marginTop: 18 }}>
         <Btn disabled={!valid} onClick={() => valid && onSave(f)}>Create ITB</Btn>
       </div>
